@@ -158,6 +158,7 @@ import com.nuvio.app.features.p2p.P2pConsentDialog
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.player.PlayerLaunch
 import com.nuvio.app.features.player.PlayerLaunchStore
+import com.nuvio.app.features.player.SubtitlePlaybackFingerprint
 import com.nuvio.app.features.player.PlayerRoute
 import com.nuvio.app.features.player.PlayerScreen
 import com.nuvio.app.features.player.PlayerPlaybackSnapshot
@@ -401,6 +402,11 @@ private fun PlayerLaunch.toExternalPlayerPlaybackRequest(): ExternalPlayerPlayba
         season = seasonNumber,
         episode = episodeNumber,
         episodeTitle = episodeTitle,
+        subtitleFingerprint = SubtitlePlaybackFingerprint(
+            videoHash = subtitleVideoHash,
+            videoSize = subtitleVideoSize,
+            filename = subtitleFilename,
+        ),
     )
 
 private enum class AppGateScreen {
@@ -1196,6 +1202,8 @@ private fun MainAppContent(
                         videoId = item.playbackVideoId(file),
                         parentMetaId = item.stableKey,
                         parentMetaType = CloudLibraryContentType,
+                        subtitleVideoSize = resolved.videoSizeBytes,
+                        subtitleFilename = resolved.filename ?: file.name,
                         initialPositionMs = if (startFromBeginning) 0L else (resumePositionMs ?: 0L),
                         initialProgressFraction = if (startFromBeginning) null else resumeProgressFraction,
                     )
@@ -1267,6 +1275,8 @@ private fun MainAppContent(
                         videoId = videoId,
                         parentMetaId = parentMetaId,
                         parentMetaType = parentMetaType,
+                        subtitleVideoSize = downloadedItem.totalBytes,
+                        subtitleFilename = downloadedItem.fileName,
                         initialPositionMs = targetResumePositionMs,
                         initialProgressFraction = targetResumeProgressFraction,
                     )
@@ -2008,6 +2018,9 @@ private fun MainAppContent(
                             torrentInfoHash = infoHash,
                             torrentFileIdx = stream.p2pFileIdx,
                             torrentFilename = stream.behaviorHints.filename,
+                            subtitleVideoHash = stream.behaviorHints.videoHash,
+                            subtitleVideoSize = stream.behaviorHints.videoSize,
+                            subtitleFilename = stream.behaviorHints.filename,
                             torrentTrackers = stream.p2pTrackers,
                             initialPositionMs = resolvedResumePositionMs ?: 0L,
                             initialProgressFraction = resolvedResumeProgressFraction,
@@ -2127,6 +2140,8 @@ private fun MainAppContent(
                                 videoId = effectiveVideoId,
                                 parentMetaId = launch.parentMetaId ?: effectiveVideoId,
                                 parentMetaType = launch.parentMetaType ?: launch.type,
+                                subtitleVideoSize = cached.videoSize,
+                                subtitleFilename = cached.filename,
                                 initialPositionMs = launch.resumePositionMs ?: 0L,
                                 initialProgressFraction = launch.resumeProgressFraction,
                                 contentLanguage = cached.contentLanguage,
@@ -2264,6 +2279,9 @@ private fun MainAppContent(
                             videoId = effectiveVideoId,
                             parentMetaId = launch.parentMetaId ?: effectiveVideoId,
                             parentMetaType = launch.parentMetaType ?: launch.type,
+                            subtitleVideoHash = stream.behaviorHints.videoHash,
+                            subtitleVideoSize = stream.behaviorHints.videoSize,
+                            subtitleFilename = stream.behaviorHints.filename,
                             initialPositionMs = launch.resumePositionMs ?: 0L,
                             initialProgressFraction = launch.resumeProgressFraction,
                         )
@@ -2392,6 +2410,9 @@ private fun MainAppContent(
                             videoId = effectiveVideoId,
                             parentMetaId = launch.parentMetaId ?: effectiveVideoId,
                             parentMetaType = launch.parentMetaType ?: launch.type,
+                            subtitleVideoHash = stream.behaviorHints.videoHash,
+                            subtitleVideoSize = stream.behaviorHints.videoSize,
+                            subtitleFilename = stream.behaviorHints.filename,
                             initialPositionMs = resolvedResumePositionMs ?: 0L,
                             initialProgressFraction = resolvedResumeProgressFraction,
                         )
@@ -2558,6 +2579,9 @@ private fun MainAppContent(
                         torrentInfoHash = launch.torrentInfoHash,
                         torrentFileIdx = launch.torrentFileIdx,
                         torrentFilename = launch.torrentFilename,
+                        subtitleVideoHash = launch.subtitleVideoHash,
+                        subtitleVideoSize = launch.subtitleVideoSize,
+                        subtitleFilename = launch.subtitleFilename,
                         torrentTrackers = launch.torrentTrackers,
                         initialPositionMs = launch.initialPositionMs,
                         initialProgressFraction = launch.initialProgressFraction,
@@ -2590,6 +2614,9 @@ private fun MainAppContent(
                                 videoId = launch.videoId,
                                 parentMetaId = launch.parentMetaId,
                                 parentMetaType = launch.parentMetaType,
+                                subtitleVideoHash = launch.subtitleVideoHash,
+                                subtitleVideoSize = launch.subtitleVideoSize,
+                                subtitleFilename = launch.subtitleFilename,
                                 initialPositionMs = request.resumePositionMs,
                             )
                             lastExternalPlayerLaunch = playerLaunch
@@ -2718,6 +2745,8 @@ private fun MainAppContent(
                                     videoId = item.videoId,
                                     parentMetaId = item.parentMetaId,
                                     parentMetaType = item.parentMetaType,
+                                    subtitleVideoSize = item.totalBytes,
+                                    subtitleFilename = item.fileName,
                                     initialPositionMs = resumeEntry?.lastPositionMs?.takeIf { it > 0L } ?: 0L,
                                     initialProgressFraction = resumeEntry?.progressFraction?.takeIf { it > 0f },
                                 )

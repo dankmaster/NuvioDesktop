@@ -8,7 +8,15 @@ import kotlinx.coroutines.launch
 internal fun PlayerScreenRuntime.fetchAddonSubtitlesForActiveItem() {
     val type = activeAddonSubtitleType.takeIf { it.isNotBlank() } ?: return
     val videoId = activeVideoId?.takeIf { it.isNotBlank() } ?: return
-    SubtitleRepository.fetchAddonSubtitles(type, videoId)
+    SubtitleRepository.fetchAddonSubtitles(
+        type = type,
+        videoId = videoId,
+        fingerprint = SubtitlePlaybackFingerprint(
+            videoHash = activeSubtitleVideoHash,
+            videoSize = activeSubtitleVideoSize,
+            filename = activeSubtitleFilename,
+        ),
+    )
 }
 
 internal fun PlayerScreenRuntime.setSubtitleDelay(delayMs: Int) {

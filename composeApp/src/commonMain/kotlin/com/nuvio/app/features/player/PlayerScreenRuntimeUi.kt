@@ -520,6 +520,11 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
                             season = activeSeasonNumber,
                             episode = activeEpisodeNumber,
                             episodeTitle = activeEpisodeTitle,
+                            subtitleFingerprint = SubtitlePlaybackFingerprint(
+                                videoHash = activeSubtitleVideoHash,
+                                videoSize = activeSubtitleVideoSize,
+                                filename = activeSubtitleFilename,
+                            ),
                         ),
                     )
                 }
@@ -1003,6 +1008,11 @@ private fun PlayerScreenRuntime.openInExternalPlayer() {
             sourceHeaders = activeSourceHeaders,
             resumePositionMs = playbackSnapshot.positionMs,
             subtitles = loadedSubtitles,
+            subtitleFingerprint = SubtitlePlaybackFingerprint(
+                videoHash = activeSubtitleVideoHash,
+                videoSize = activeSubtitleVideoSize,
+                filename = activeSubtitleFilename,
+            ),
         ),
     )
 }

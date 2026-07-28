@@ -49,6 +49,12 @@ internal fun PlayerScreenRuntime.p2pSentinelUrl(infoHash: String, fileIdx: Int?)
 internal fun PlayerScreenRuntime.isP2pStream(stream: StreamItem): Boolean =
     stream.needsLocalDebridResolve && stream.p2pInfoHash != null
 
+private fun PlayerScreenRuntime.applySubtitlePlaybackFingerprint(stream: StreamItem) {
+    activeSubtitleVideoHash = stream.behaviorHints.videoHash
+    activeSubtitleVideoSize = stream.behaviorHints.videoSize
+    activeSubtitleFilename = stream.behaviorHints.filename
+}
+
 internal fun StreamItem.playerSourceIdentityKey(): String? {
     p2pInfoHash?.trim()?.lowercase()?.takeIf { it.isNotBlank() }?.let { hash ->
         return "torrent:$hash:${p2pFileIdx ?: -1}"
@@ -169,6 +175,7 @@ internal fun PlayerScreenRuntime.switchToP2pSourceStream(stream: StreamItem) {
     activeTorrentFileIdx = stream.p2pFileIdx
     activeTorrentFilename = stream.behaviorHints.filename
     activeTorrentTrackers = stream.p2pTrackers
+    applySubtitlePlaybackFingerprint(stream)
     activeSourceIdentityKey = stream.playerSourceIdentityKey()
     activeStreamTitle = stream.streamLabel
     activeStreamSubtitle = stream.streamSubtitle
@@ -212,6 +219,7 @@ internal fun PlayerScreenRuntime.switchToP2pEpisodeStream(
     activeTorrentFileIdx = stream.p2pFileIdx
     activeTorrentFilename = stream.behaviorHints.filename
     activeTorrentTrackers = stream.p2pTrackers
+    applySubtitlePlaybackFingerprint(stream)
     applyEpisodeStreamMetadata(stream, episode, resume)
 }
 
@@ -244,6 +252,7 @@ internal fun PlayerScreenRuntime.switchToSource(stream: StreamItem) {
     val sourceIdentityKey = stream.playerSourceIdentityKey()
     if (url == activeSourceUrl) {
         activeSourceIdentityKey = sourceIdentityKey ?: activeSourceIdentityKey
+        applySubtitlePlaybackFingerprint(stream)
         return
     }
     val currentPositionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)
@@ -258,6 +267,7 @@ internal fun PlayerScreenRuntime.switchToSource(stream: StreamItem) {
     activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
     activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
     activeStreamType = stream.streamType
+    applySubtitlePlaybackFingerprint(stream)
     activeSourceIdentityKey = sourceIdentityKey
     activeStreamTitle = stream.streamLabel
     activeStreamSubtitle = stream.streamSubtitle
@@ -306,6 +316,7 @@ internal fun PlayerScreenRuntime.switchToEpisodeStream(stream: StreamItem, episo
     activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
     activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
     activeStreamType = stream.streamType
+    applySubtitlePlaybackFingerprint(stream)
     applyEpisodeStreamMetadata(stream, episode, resume)
 }
 
@@ -335,6 +346,9 @@ internal fun PlayerScreenRuntime.switchToDownloadedEpisode(downloadItem: Downloa
     activeSourceResponseHeaders = emptyMap()
     activeStreamType = null
     activeSourceIdentityKey = null
+    activeSubtitleVideoHash = null
+    activeSubtitleVideoSize = downloadItem.totalBytes?.takeIf { it > 0L }
+    activeSubtitleFilename = downloadItem.fileName.takeIf { it.isNotBlank() }
     activeStreamTitle = downloadItem.streamTitle.ifBlank {
         episode.title.ifBlank { title }
     }
@@ -440,6 +454,7 @@ private fun PlayerScreenRuntime.applyEpisodeStreamMetadata(
     episode: MetaVideo,
     resume: EpisodeResume,
 ) {
+    applySubtitlePlaybackFingerprint(stream)
     activeSourceIdentityKey = stream.playerSourceIdentityKey()
     activeStreamTitle = stream.streamLabel
     activeStreamSubtitle = stream.streamSubtitle

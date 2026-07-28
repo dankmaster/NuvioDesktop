@@ -3,6 +3,7 @@ package com.nuvio.app.features.player
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.AddonResource
 import com.nuvio.app.features.addons.buildAddonResourceUrl
+import com.nuvio.app.features.addons.encodeAddonPathSegment
 import com.nuvio.app.features.addons.enabledAddons
 import com.nuvio.app.features.addons.httpGetText
 import kotlinx.coroutines.CancellationException
@@ -19,10 +20,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_player_no_subtitles_found
 import nuvio.composeapp.generated.resources.player_addon_subtitle_display_format
@@ -43,7 +47,11 @@ object SubtitleRepository {
 
     private var activeFetchJob: Job? = null
 
-    fun fetchAddonSubtitles(type: String, videoId: String) {
+    fun fetchAddonSubtitles(
+        type: String,
+        videoId: String,
+        fingerprint: SubtitlePlaybackFingerprint? = null,
+    ) {
         activeFetchJob?.cancel()
         activeFetchJob = scope.launch {
             val requestType = canonicalSubtitleType(type)
@@ -64,6 +72,7 @@ object SubtitleRepository {
                     resource = "subtitles",
                     type = requestType,
                     id = videoId,
+                    extraPathSegment = fingerprint?.toSubtitleExtraPathSegment(),
                 )
 
                 try {
@@ -80,18 +89,33 @@ object SubtitleRepository {
                         val url = obj.stringValue("url") ?: continue
                         val rawLang = obj.subtitleLanguage() ?: "unknown"
                         val normalizedLang = normalizeLanguageCode(rawLang) ?: rawLang
+                        val premiumName = obj.stringValue("name")
+                        val languageLabel = getLanguageLabelForCode(rawLang)
 
                         allSubs.add(
                             AddonSubtitle(
                                 id = id,
                                 url = url,
                                 language = normalizedLang,
-                                display = getString(
-                                    Res.string.player_addon_subtitle_display_format,
-                                    getLanguageLabelForCode(rawLang),
-                                    addon.displayTitle,
-                                ),
+                                display = premiumName
+                                    ?.let { "$languageLabel · $it" }
+                                    ?: getString(
+                                        Res.string.player_addon_subtitle_display_format,
+                                        languageLabel,
+                                        addon.displayTitle,
+                                    ),
                                 addonName = addon.displayTitle,
+                                source = obj.stringValue("source"),
+                                match = obj.stringValue("match"),
+                                hearingImpaired = obj.booleanValue("hearingImpaired"),
+                                forced = obj.booleanValue("forced"),
+                                aiTranslated = obj.booleanValue("aiTranslated"),
+                                machineTranslated = obj.booleanValue("machineTranslated"),
+                                trusted = obj.booleanValue("trusted"),
+                                release = obj.stringValue("release"),
+                                fps = obj.numberValue("fps"),
+                                score = obj.numberValue("score"),
+                                rankReasons = obj.stringArrayValue("rankReasons"),
                             )
                         )
                     }
@@ -142,3 +166,38 @@ private fun JsonObject.stringValue(name: String): String? =
         ?.contentOrNull
         ?.trim()
         ?.takeIf { it.isNotBlank() }
+
+private fun JsonObject.booleanValue(name: String): Boolean =
+    this[name]?.jsonPrimitive?.booleanOrNull == true
+
+private fun JsonObject.numberValue(name: String): Double? =
+    this[name]?.jsonPrimitive?.doubleOrNull
+
+private fun JsonObject.stringArrayValue(name: String): List<String> =
+    (this[name] as? JsonArray)
+        ?.mapNotNull { element ->
+            (element as? JsonPrimitive)
+                ?.contentOrNull
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+        }
+        .orEmpty()
+
+internal fun SubtitlePlaybackFingerprint.toSubtitleExtraPathSegment(): String? {
+    val normalizedHash = videoHash
+        ?.trim()
+        ?.lowercase()
+        ?.takeIf { it.matches(Regex("^[a-f0-9]{16}$")) }
+    val normalizedSize = videoSize?.takeIf { it > 0L }
+    val normalizedFilename = filename
+        ?.trim()
+        ?.replace('\\', '/')
+        ?.substringAfterLast('/')
+        ?.take(255)
+        ?.takeIf { it.isNotBlank() }
+    return buildList {
+        normalizedHash?.let { add("videoHash=${it.encodeAddonPathSegment()}") }
+        normalizedSize?.let { add("videoSize=$it") }
+        normalizedFilename?.let { add("filename=${it.encodeAddonPathSegment()}") }
+    }.joinToString("&").takeIf { it.isNotBlank() }
+}

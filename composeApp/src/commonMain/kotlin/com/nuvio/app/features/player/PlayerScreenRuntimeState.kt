@@ -104,6 +104,11 @@ internal class PlayerScreenRuntime(
     var activeTorrentInfoHash by mutableStateOf(torrentInfoHash)
     var activeTorrentFileIdx by mutableStateOf(torrentFileIdx)
     var activeTorrentFilename by mutableStateOf(torrentFilename)
+    var activeSubtitleVideoHash by mutableStateOf(args.subtitleVideoHash)
+    var activeSubtitleVideoSize by mutableStateOf(args.subtitleVideoSize)
+    var activeSubtitleFilename by mutableStateOf(
+        args.subtitleFilename ?: torrentFilename,
+    )
     var activeTorrentTrackers by mutableStateOf(torrentTrackers)
     var p2pResolvedSourceUrl by mutableStateOf<String?>(null)
     var activeSourceIdentityKey by mutableStateOf(

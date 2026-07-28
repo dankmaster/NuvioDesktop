@@ -48,6 +48,7 @@ suspend fun prepareExternalPlayerLaunch(
             val subtitles = SubtitleForwarder.fetchForExternalPlayer(
                 type = type,
                 videoId = videoId,
+                fingerprint = request.subtitleFingerprint,
                 preferredLanguage = preferredLanguage,
                 secondaryLanguage = secondaryLanguage,
             )

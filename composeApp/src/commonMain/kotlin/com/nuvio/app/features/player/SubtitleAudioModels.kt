@@ -31,7 +31,24 @@ data class AddonSubtitle(
     val language: String,
     val display: String,
     val addonName: String? = null,
+    val source: String? = null,
+    val match: String? = null,
+    val hearingImpaired: Boolean = false,
+    val forced: Boolean = false,
+    val aiTranslated: Boolean = false,
+    val machineTranslated: Boolean = false,
+    val trusted: Boolean = false,
+    val release: String? = null,
+    val fps: Double? = null,
+    val score: Double? = null,
+    val rankReasons: List<String> = emptyList(),
     val isSelected: Boolean = false,
+)
+
+data class SubtitlePlaybackFingerprint(
+    val videoHash: String? = null,
+    val videoSize: Long? = null,
+    val filename: String? = null,
 )
 
 enum class SubtitleTab {

@@ -21,6 +21,7 @@ data class ExternalPlayerPlaybackRequest(
     val season: Int? = null,
     val episode: Int? = null,
     val episodeTitle: String? = null,
+    val subtitleFingerprint: SubtitlePlaybackFingerprint? = null,
     // JSON array of intro/outro skip segments, passed to players that support auto-skipping.
     val skipSegmentsJson: String? = null,
 ) {
