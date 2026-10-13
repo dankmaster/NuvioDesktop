@@ -17,7 +17,7 @@ The default session directory is `.debug-cli`, which is ignored by Git.
 The app owns a non-focusing window outside the desktop. This is background
 playback, not a headless/native-decoder replacement. `-Visible` shows the debug
 window. `-SessionDirectory` starts independent sessions with isolated preferences
-and caches. No login, account sync, history writes or telemetry are started.
+and caches. No login, account sync, remote history writes or telemetry are started.
 
 Use private JSON files to pass media URLs and optional request headers, so signed
 URLs and credentials are not put on the process command line:
@@ -48,6 +48,15 @@ On Windows, `capture` exports the decoded native MPV video frame to
 `stop` releases the current player, and `shutdown` closes the diagnostic session.
 
 Poster preview request:
+
+`history` accepts a private JSON file with up to 100 `entries` containing
+`contentId`, `contentType`, nullable `season`/`episode` and `watchedAtMs`.
+Supplying entries replaces only this isolated session's local watched store,
+preserving the supplied dates. Up to 10 `queries` use the same identity fields
+without the date. The response contains real `WatchedRepository.isWatched`
+matches and loaded timestamps. This replays client matching; it does not test
+cloud delivery or series completion. `preview` may use a `lookup` query instead
+of the explicit `watched` flag to render the badge from that real matcher.
 
 ```json
 {"url":"https://example.org/poster.png","shape":"poster","width":320,"height":540,"watched":true}

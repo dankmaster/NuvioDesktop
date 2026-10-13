@@ -22,6 +22,7 @@ import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.svg.SvgDecoder
 import com.nuvio.app.features.player.*
+import com.nuvio.app.features.watched.*
 import com.nuvio.app.features.player.desktop.preloadNativePlayerBridgeAsync
 import com.nuvio.app.features.player.desktop.NativePlayerController
 import com.nuvio.debug.*
@@ -32,6 +33,7 @@ import javax.swing.SwingUtilities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.*
+import kotlinx.serialization.encodeToString
 import org.jetbrains.skia.EncodedImageFormat
 
 /** Explicit debug entry point: no account, sync, scrobbling or telemetry startup. */
@@ -61,6 +63,13 @@ fun runDesktopDebugCli(args: Array<String>) {
     var exit by mutableStateOf(false)
     lateinit var server: DebugCommandServer
 
+    fun historyLookup(query: JsonObject) = WatchedRepository.isWatched(
+        id = query["contentId"]!!.jsonPrimitive.content,
+        type = query["contentType"]!!.jsonPrimitive.content,
+        season = query["season"]?.jsonPrimitive?.intOrNull,
+        episode = query["episode"]?.jsonPrimitive?.intOrNull,
+    )
+
     fun status() = buildJsonObject {
         put("ok", true); put("platform", "desktop"); put("engine", "native-mpv")
         put("mode", if (url == null) "idle" else "player")
@@ -88,6 +97,33 @@ fun runDesktopDebugCli(args: Array<String>) {
                 val command = text("command")
                 when (command) {
                     "status" -> status()
+                    "history" -> {
+                        // Only the isolated debug session's disk store is touched.
+                        request["entries"]?.jsonArray?.let { entries ->
+                            require(entries.size <= 100)
+                            val items = entries.map { value ->
+                                val entry = value.jsonObject
+                                val id = entry["contentId"]!!.jsonPrimitive.content
+                                val type = entry["contentType"]!!.jsonPrimitive.content
+                                require(Regex("(?:tt\\d{5,12}|tmdb:[1-9]\\d*)").matches(id))
+                                require(type in listOf("movie", "series"))
+                                WatchedItem(id = id, type = type, name = "Debug history",
+                                    season = entry["season"]?.jsonPrimitive?.intOrNull,
+                                    episode = entry["episode"]?.jsonPrimitive?.intOrNull,
+                                    markedAtEpochMs = entry["watchedAtMs"]!!.jsonPrimitive.long.also { require(it > 0) })
+                            }
+                            WatchedStorage.savePayload(1, Json.encodeToString(StoredWatchedPayload(items = items)))
+                            WatchedRepository.clearLocalState()
+                            WatchedRepository.onProfileChanged(1)
+                        }
+                        val queries = request["queries"]?.jsonArray ?: JsonArray(emptyList())
+                        require(queries.size <= 10)
+                        buildJsonObject {
+                            put("ok", true); put("scope", "local-debug-only")
+                            put("matches", buildJsonArray { queries.forEach { add(historyLookup(it.jsonObject)) } })
+                            put("timestamps", buildJsonArray { WatchedRepository.uiState.value.items.forEach { add(it.markedAtEpochMs) } })
+                        }
+                    }
                     "load" -> {
                         val source = text("url")
                         require(java.net.URI(source).scheme in listOf("http", "https", "file"))
@@ -125,17 +161,19 @@ fun runDesktopDebugCli(args: Array<String>) {
                             "square" -> NuvioPosterShape.Square
                             else -> error("invalid-shape")
                         }
-                        val watched = request["watched"]?.jsonPrimitive?.boolean ?: false
+                        val watched = request["lookup"]?.jsonObject?.let(::historyLookup)
+                            ?: (request["watched"]?.jsonPrimitive?.boolean ?: false)
+                        val baseWidth = if (shape == NuvioPosterShape.Landscape) kotlin.math.floor(width * 110.0 / 180.0).toInt() else width
                         previewScene?.close(); previewFrames = 0
                         previewScene = ImageComposeScene(width, height, coroutineContext = Dispatchers.Main) {
                             NuvioTheme {
                                 Box(Modifier.fillMaxSize().background(Color(0xff0d0d0d))) {
                                     NuvioPosterCard(title = "Debug preview", imageUrl = imageUrl,
-                                        basePosterWidthDp = width, shape = shape, isWatched = watched)
+                                        basePosterWidthDp = baseWidth, shape = shape, isWatched = watched)
                                 }
                             }
                         }
-                        debugOk()
+                        buildJsonObject { put("ok", true); put("watched", watched); put("historyLookup", request.containsKey("lookup")) }
                     }
                     "render" -> {
                         val scene = previewScene ?: error("preview-not-ready")
