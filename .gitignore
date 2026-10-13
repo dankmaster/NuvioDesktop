@@ -33,6 +33,10 @@ AGENTS.md
 
 PERFORMANCE_FINDINGS.md
 scripts/*
+!scripts/debug-command.ps1
+!scripts/debug-desktop.ps1
+.debug-cli/
+build-debug-cli.log
 !scripts/sign-ios-device-app.py
 iosApp/Configuration/DeviceSigning.local.json
 

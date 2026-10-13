@@ -889,7 +889,6 @@ val buildWindowsPlayerBridge = tasks.register<Exec>("buildWindowsPlayerBridge") 
     outputs.file(windowsPlayerBridgeOutput)
     outputs.file(windowsPlayerBridgeImportLib)
     outputs.file(windowsPlayerBridgePdb)
-    onlyIf { !windowsPlayerBridgeOutput.get().asFile.exists() }
     commandLine(windowsPlayerBridgeCommand)
 }
 
@@ -1255,6 +1254,18 @@ tasks.matching {
     it.name == "desktopProcessResources" || it.name == "processDesktopMainResources"
 }.configureEach {
     dependsOn(":desktopSentry:generateSentryDebugMetaPropertiesjava")
+}
+
+tasks.register("prepareDebugCli") {
+    dependsOn("desktopJar")
+    doLast {
+        val main = kotlin.targets.getByName("desktop").compilations.getByName("main")
+        val classpath = files(main.output.allOutputs, configurations.getByName("desktopRuntimeClasspath"))
+        layout.buildDirectory.file("debug-cli/classpath.txt").get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(classpath.asPath)
+        }
+    }
 }
 
 compose.desktop {

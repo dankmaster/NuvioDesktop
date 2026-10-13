@@ -62,6 +62,7 @@ internal object NativePlayerBridge {
         runCatching { reparentSurfaceNative(handle, hostViewPtr) }.isSuccess
     external fun setPaused(handle: Long, paused: Boolean)
     external fun seekTo(handle: Long, positionMs: Long)
+    external fun captureDebugFrame(handle: Long, path: String): Boolean
     external fun seekBy(handle: Long, offsetMs: Long)
     external fun setSpeed(handle: Long, speed: Float)
     external fun adjustVolume(handle: Long, delta: Float)

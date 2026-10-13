@@ -41,6 +41,7 @@ internal object DesktopStorage {
     }
 
     private fun resolveAppDataDir(): Path {
+        System.getProperty("nuvio.debug.dataDir")?.let { return Paths.get(it) }
         val osName = System.getProperty("os.name").orEmpty().lowercase(Locale.ROOT)
         val userHome = Paths.get(System.getProperty("user.home").orEmpty())
         return when {
@@ -57,6 +58,7 @@ internal object DesktopStorage {
     }
 
     private fun resolveCacheDir(): Path {
+        System.getProperty("nuvio.debug.dataDir")?.let { return Paths.get(it).resolve("cache") }
         val osName = System.getProperty("os.name").orEmpty().lowercase(Locale.ROOT)
         val userHome = Paths.get(System.getProperty("user.home").orEmpty())
         return when {

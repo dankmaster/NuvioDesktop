@@ -85,6 +85,17 @@ internal class NativePlayerController(
 
     @Volatile
     private var handle: Long = 0L
+    @Volatile private var debugMuted = false
+
+    fun isDebugReady(): Boolean = handle != 0L
+
+    fun setDebugMuted(muted: Boolean) {
+        debugMuted = muted
+        setTemporaryVolume(if (muted) 0f else rememberedVolumeLevel)
+    }
+
+    fun captureDebugFrame(path: String): Boolean = handle.takeIf { it != 0L }
+        ?.let { NativePlayerBridge.captureDebugFrame(it, path) } ?: false
 
     /** Native teardown of the previous player, if one is still running. */
     @Volatile
@@ -649,7 +660,7 @@ internal class NativePlayerController(
     private fun applyRememberedVolume() {
         val current = handle
         if (current == 0L) return
-        val level = rememberedVolumeLevel.coerceDesktopPlayerVolumeLevel()
+        val level = if (debugMuted) 0f else rememberedVolumeLevel.coerceDesktopPlayerVolumeLevel()
         currentVolumeLevel = level
         NativePlayerBridge.setVolume(current, level)
         controlsState = controlsState.copy(volumeLevel = level)

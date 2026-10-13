@@ -471,14 +471,21 @@ std::string hresultMessage(const char *operation, HRESULT hr) {
 }
 
 std::wstring localAppDataDirectory(const wchar_t *name) {
-    PWSTR localAppData = nullptr;
-    HRESULT result = SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, nullptr, &localAppData);
-    if (FAILED(result) || !localAppData) {
-        if (localAppData) CoTaskMemFree(localAppData);
-        throw std::runtime_error(hresultMessage("SHGetKnownFolderPath", result));
+    wchar_t debugRoot[32768] = {};
+    DWORD debugLength = GetEnvironmentVariableW(L"NUVIO_DEBUG_NATIVE_DATA_DIR", debugRoot, 32768);
+    std::wstring directory;
+    if (debugLength > 0 && debugLength < 32768) {
+        directory.assign(debugRoot, debugRoot + debugLength);
+    } else {
+        PWSTR localAppData = nullptr;
+        HRESULT result = SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, nullptr, &localAppData);
+        if (FAILED(result) || !localAppData) {
+            if (localAppData) CoTaskMemFree(localAppData);
+            throw std::runtime_error(hresultMessage("SHGetKnownFolderPath", result));
+        }
+        directory.assign(localAppData);
+        CoTaskMemFree(localAppData);
     }
-    std::wstring directory(localAppData);
-    CoTaskMemFree(localAppData);
     directory += L"\\Nuvio\\";
     directory += name;
     int createResult = SHCreateDirectoryExW(nullptr, directory.c_str(), nullptr);
@@ -1114,6 +1121,13 @@ public:
 
     bool isPaused() {
         return flagProperty("pause", true);
+    }
+
+    bool captureDebugFrame(const std::string &path) {
+        std::lock_guard<std::mutex> lock(mpvMutex);
+        if (!mpv || path.empty()) return false;
+        const char *command[] = {"screenshot-to-file", path.c_str(), "video", nullptr};
+        return mpvApi().command(mpv, command) >= 0;
     }
 
     void seekToMilliseconds(long long positionMs) {
@@ -2777,6 +2791,12 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_nuvio_app_features_player_desktop_NativePlayerBridge_seekTo(JNIEnv *, jobject, jlong handle, jlong positionMs) {
     auto player = playerFromHandle(handle);
     if (player) player->seekToMilliseconds(positionMs);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_nuvio_app_features_player_desktop_NativePlayerBridge_captureDebugFrame(JNIEnv *env, jobject, jlong handle, jstring path) {
+    auto player = playerFromHandle(handle);
+    return player && player->captureDebugFrame(jstringToUtf8(env, path)) ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT void JNICALL
